@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -16,20 +18,29 @@ import (
 )
 
 func main() {
-	const PORT = "8080"
 
+	// Load all config server, db, app
 	cfg, err := config.Load()
 	if err != nil {
 		slog.Error("Failed to load config", "error", err)
 	}
 
+	//open DB
+	db, err := openDB(cfg.DB)
+	if err != nil {
+		slog.Error("Failed to connect to db", "error", err)
+	}
+	defer db.Close()
+	slog.Info("Db connected:", "host", cfg.DB.Host, "name", cfg.DB.Name)
+
 	h := handler.New()
-
 	chain := middleware.Chaining()
-
 	server := &http.Server{
-		Addr:    PORT,
-		Handler: chain(h.Routes()),
+		Addr:         fmt.Sprintf(":%s", cfg.Server.Port),
+		Handler:      chain(h.Routes()),
+		ReadTimeout:  cfg.Server.ReadTimeOut,
+		WriteTimeout: cfg.Server.WriteTimeOut,
+		IdleTimeout:  cfg.Server.IdleTime,
 	}
 
 	quit := make(chan os.Signal, 1)
@@ -56,4 +67,19 @@ func main() {
 
 	slog.Info("server stopped")
 
+}
+
+func openDB(cfg config.DBConfig) (*sql.DB, error) {
+	db, err := sql.Open("psql", cfg.DSN())
+	if err != nil {
+		return nil, fmt.Errorf("open db :%w", err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := db.PingContext(ctx); err != nil {
+		return nil, fmt.Errorf("ping db: %w", err)
+	}
+
+	return db, nil
 }
