@@ -10,7 +10,7 @@ type Envelope struct {
 	Error string `json:"error,omitempty"`
 }
 
-func JSON(w http.ResponseWriter, status int, data any) {
+func ResponseWithJSON(w http.ResponseWriter, status int, data any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(
@@ -18,7 +18,7 @@ func JSON(w http.ResponseWriter, status int, data any) {
 	)
 }
 
-func Error(w http.ResponseWriter, status int, msg string) {
+func ResponseWithError(w http.ResponseWriter, status int, msg string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(

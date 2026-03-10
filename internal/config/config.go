@@ -16,7 +16,8 @@ type Config struct {
 }
 
 type AppConfig struct {
-	Env string
+	Env     string
+	BaseURL string
 }
 
 type ServerConfig struct {
@@ -50,7 +51,8 @@ func Load() (*Config, error) {
 
 	cfg := &Config{
 		App: AppConfig{
-			Env: getStr("APP_ENV", "development"),
+			Env:     getStr("APP_ENV", "development"),
+			BaseURL: getStr("BASE_URL", "http://localhost:8080"),
 		},
 
 		Server: ServerConfig{

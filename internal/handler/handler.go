@@ -3,15 +3,20 @@ package handler
 import (
 	"net/http"
 
+	"github.com/ihyaulhaq/url-shotener-BE/internal/service"
 	"github.com/ihyaulhaq/url-shotener-BE/pkg/utils"
 )
 
 type Handler struct {
+	urlService *service.UrlService
+	baseURL    string
 }
 
-func New() *Handler {
-
-	return &Handler{}
+func New(urlService *service.UrlService, baseURL string) *Handler {
+	return &Handler{
+		urlService: urlService,
+		baseURL:    baseURL,
+	}
 }
 
 func (h *Handler) Routes() http.Handler {
@@ -26,6 +31,6 @@ func (h *Handler) Routes() http.Handler {
 }
 
 func (h *Handler) heatlh(w http.ResponseWriter, r *http.Request) {
-	utils.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	utils.ResponseWithJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 
 }

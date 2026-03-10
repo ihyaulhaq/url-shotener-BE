@@ -15,6 +15,8 @@ import (
 	"github.com/ihyaulhaq/url-shotener-BE/internal/config"
 	"github.com/ihyaulhaq/url-shotener-BE/internal/handler"
 	"github.com/ihyaulhaq/url-shotener-BE/internal/middleware"
+	"github.com/ihyaulhaq/url-shotener-BE/internal/service"
+	"github.com/ihyaulhaq/url-shotener-BE/internal/store"
 )
 
 func main() {
@@ -33,7 +35,10 @@ func main() {
 	defer db.Close()
 	slog.Info("Db connected:", "host", cfg.DB.Host, "name", cfg.DB.Name)
 
-	h := handler.New()
+	s := store.NewStore(db)
+	urlSrv := service.NewUrlService(s)
+	h := handler.New(urlSrv, cfg.App.BaseURL)
+
 	chain := middleware.Chaining()
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%s", cfg.Server.Port),

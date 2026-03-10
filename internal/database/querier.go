@@ -24,7 +24,7 @@ type Querier interface {
 	GetRefreshTokenByToken(ctx context.Context, token string) (RefreshToken, error)
 	GetRefreshTokensByUserID(ctx context.Context, userID uuid.UUID) ([]RefreshToken, error)
 	GetURLByID(ctx context.Context, id uuid.UUID) (Url, error)
-	GetURLByShortURL(ctx context.Context, shortUrl string) (Url, error)
+	GetURLByURLCode(ctx context.Context, urlCode string) (Url, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
 	GetUserByUsername(ctx context.Context, username string) (User, error)

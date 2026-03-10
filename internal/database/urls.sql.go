@@ -13,25 +13,25 @@ import (
 )
 
 const createURL = `-- name: CreateURL :one
-INSERT INTO urls (short_url, original_url, count_code)
+INSERT INTO urls (url_code, original_url, click_count)
 VALUES ($1, $2, $3)
-RETURNING id, short_url, original_url, count_code, created_at, updated_at
+RETURNING id, url_code, original_url, click_count, created_at, updated_at
 `
 
 type CreateURLParams struct {
-	ShortUrl    string        `json:"short_url"`
+	UrlCode     string        `json:"url_code"`
 	OriginalUrl string        `json:"original_url"`
-	CountCode   sql.NullInt32 `json:"count_code"`
+	ClickCount  sql.NullInt32 `json:"click_count"`
 }
 
 func (q *Queries) CreateURL(ctx context.Context, arg CreateURLParams) (Url, error) {
-	row := q.db.QueryRowContext(ctx, createURL, arg.ShortUrl, arg.OriginalUrl, arg.CountCode)
+	row := q.db.QueryRowContext(ctx, createURL, arg.UrlCode, arg.OriginalUrl, arg.ClickCount)
 	var i Url
 	err := row.Scan(
 		&i.ID,
-		&i.ShortUrl,
+		&i.UrlCode,
 		&i.OriginalUrl,
-		&i.CountCode,
+		&i.ClickCount,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -49,7 +49,7 @@ func (q *Queries) DeleteURL(ctx context.Context, id uuid.UUID) error {
 }
 
 const getAllURLs = `-- name: GetAllURLs :many
-SELECT id, short_url, original_url, count_code, created_at, updated_at
+SELECT id, url_code, original_url, click_count, created_at, updated_at
 FROM urls
 ORDER BY created_at DESC
 `
@@ -65,9 +65,9 @@ func (q *Queries) GetAllURLs(ctx context.Context) ([]Url, error) {
 		var i Url
 		if err := rows.Scan(
 			&i.ID,
-			&i.ShortUrl,
+			&i.UrlCode,
 			&i.OriginalUrl,
-			&i.CountCode,
+			&i.ClickCount,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -85,7 +85,7 @@ func (q *Queries) GetAllURLs(ctx context.Context) ([]Url, error) {
 }
 
 const getURLByID = `-- name: GetURLByID :one
-SELECT id, short_url, original_url, count_code, created_at, updated_at
+SELECT id, url_code, original_url, click_count, created_at, updated_at
 FROM urls
 WHERE id = $1
 `
@@ -95,29 +95,29 @@ func (q *Queries) GetURLByID(ctx context.Context, id uuid.UUID) (Url, error) {
 	var i Url
 	err := row.Scan(
 		&i.ID,
-		&i.ShortUrl,
+		&i.UrlCode,
 		&i.OriginalUrl,
-		&i.CountCode,
+		&i.ClickCount,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
 	return i, err
 }
 
-const getURLByShortURL = `-- name: GetURLByShortURL :one
-SELECT id, short_url, original_url, count_code, created_at, updated_at
+const getURLByURLCode = `-- name: GetURLByURLCode :one
+SELECT id, url_code, original_url, click_count, created_at, updated_at
 FROM urls
-WHERE short_url = $1
+WHERE url_code = $1
 `
 
-func (q *Queries) GetURLByShortURL(ctx context.Context, shortUrl string) (Url, error) {
-	row := q.db.QueryRowContext(ctx, getURLByShortURL, shortUrl)
+func (q *Queries) GetURLByURLCode(ctx context.Context, urlCode string) (Url, error) {
+	row := q.db.QueryRowContext(ctx, getURLByURLCode, urlCode)
 	var i Url
 	err := row.Scan(
 		&i.ID,
-		&i.ShortUrl,
+		&i.UrlCode,
 		&i.OriginalUrl,
-		&i.CountCode,
+		&i.ClickCount,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -126,9 +126,9 @@ func (q *Queries) GetURLByShortURL(ctx context.Context, shortUrl string) (Url, e
 
 const incrementURLCount = `-- name: IncrementURLCount :one
 UPDATE urls
-SET count_code = count_code + 1, updated_at = NOW()
+SET click_count = click_count + 1, updated_at = NOW()
 WHERE id = $1
-RETURNING id, short_url, original_url, count_code, created_at, updated_at
+RETURNING id, url_code, original_url, click_count, created_at, updated_at
 `
 
 func (q *Queries) IncrementURLCount(ctx context.Context, id uuid.UUID) (Url, error) {
@@ -136,9 +136,9 @@ func (q *Queries) IncrementURLCount(ctx context.Context, id uuid.UUID) (Url, err
 	var i Url
 	err := row.Scan(
 		&i.ID,
-		&i.ShortUrl,
+		&i.UrlCode,
 		&i.OriginalUrl,
-		&i.CountCode,
+		&i.ClickCount,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -147,31 +147,31 @@ func (q *Queries) IncrementURLCount(ctx context.Context, id uuid.UUID) (Url, err
 
 const updateURL = `-- name: UpdateURL :one
 UPDATE urls
-SET short_url = $2, original_url = $3, count_code = $4, updated_at = NOW()
+SET url_code = $2, original_url = $3, click_count = $4, updated_at = NOW()
 WHERE id = $1
-RETURNING id, short_url, original_url, count_code, created_at, updated_at
+RETURNING id, url_code, original_url, click_count, created_at, updated_at
 `
 
 type UpdateURLParams struct {
 	ID          uuid.UUID     `json:"id"`
-	ShortUrl    string        `json:"short_url"`
+	UrlCode     string        `json:"url_code"`
 	OriginalUrl string        `json:"original_url"`
-	CountCode   sql.NullInt32 `json:"count_code"`
+	ClickCount  sql.NullInt32 `json:"click_count"`
 }
 
 func (q *Queries) UpdateURL(ctx context.Context, arg UpdateURLParams) (Url, error) {
 	row := q.db.QueryRowContext(ctx, updateURL,
 		arg.ID,
-		arg.ShortUrl,
+		arg.UrlCode,
 		arg.OriginalUrl,
-		arg.CountCode,
+		arg.ClickCount,
 	)
 	var i Url
 	err := row.Scan(
 		&i.ID,
-		&i.ShortUrl,
+		&i.UrlCode,
 		&i.OriginalUrl,
-		&i.CountCode,
+		&i.ClickCount,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

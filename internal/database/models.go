@@ -23,9 +23,9 @@ type RefreshToken struct {
 
 type Url struct {
 	ID          uuid.UUID     `json:"id"`
-	ShortUrl    string        `json:"short_url"`
+	UrlCode     string        `json:"url_code"`
 	OriginalUrl string        `json:"original_url"`
-	CountCode   sql.NullInt32 `json:"count_code"`
+	ClickCount  sql.NullInt32 `json:"click_count"`
 	CreatedAt   time.Time     `json:"created_at"`
 	UpdatedAt   time.Time     `json:"updated_at"`
 }
