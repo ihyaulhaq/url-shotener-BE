@@ -48,7 +48,7 @@ func (h *Handler) handleShorteningUrl(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleRedirectUrl(w http.ResponseWriter, r *http.Request) {
-	urlCode := r.PathValue("urlCode") // or chi: chi.URLParam(r, "urlCode")
+	urlCode := r.PathValue("shortUrl")
 	if urlCode == "" {
 		utils.ResponseWithError(w, http.StatusBadRequest, "url code is required")
 		return

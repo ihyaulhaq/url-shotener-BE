@@ -22,12 +22,12 @@ type RefreshToken struct {
 }
 
 type Url struct {
-	ID          uuid.UUID     `json:"id"`
-	UrlCode     string        `json:"url_code"`
-	OriginalUrl string        `json:"original_url"`
-	ClickCount  sql.NullInt32 `json:"click_count"`
-	CreatedAt   time.Time     `json:"created_at"`
-	UpdatedAt   time.Time     `json:"updated_at"`
+	ID          uuid.UUID `json:"id"`
+	UrlCode     string    `json:"url_code"`
+	OriginalUrl string    `json:"original_url"`
+	ClickCount  int32     `json:"click_count"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 type UrlUser struct {

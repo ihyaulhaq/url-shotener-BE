@@ -4,7 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/url"
 
 	"github.com/ihyaulhaq/url-shotener-BE/internal/database"
@@ -53,13 +53,13 @@ func (s *UrlService) GetOriginalUrl(ctx context.Context, urlCode string) (databa
 		return database.Url{}, fmt.Errorf("short url not found")
 	}
 
-	go func() {
-		if _, err := s.store.IncrementURLCount(context.Background(), result.ID); err != nil {
-			log.Printf("failed to increment click count for %s: %v", urlCode, err)
-		}
-	}()
+	updated, err := s.store.IncrementURLCount(context.Background(), result.ID)
+	if err != nil {
+		slog.Error("failed to increment click count", "urlCode", urlCode, "error", err)
+		return result, nil
+	}
 
-	return result, nil
+	return updated, nil
 }
 
 func (s *UrlService) generateUniqueCode(ctx context.Context, input string) (string, error) {

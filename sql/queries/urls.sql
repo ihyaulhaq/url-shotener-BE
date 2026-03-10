@@ -1,6 +1,6 @@
 -- name: CreateURL :one
-INSERT INTO urls (url_code, original_url, click_count)
-VALUES ($1, $2, $3)
+INSERT INTO urls (url_code, original_url)
+VALUES ($1, $2)
 RETURNING id, url_code, original_url, click_count, created_at, updated_at;
 
 -- name: GetURLByID :one

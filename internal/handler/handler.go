@@ -25,7 +25,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /health", h.heatlh)
 
 	mux.HandleFunc("POST /api/urls/shorten", h.handleShorteningUrl)
-	mux.HandleFunc("GEt /api/urls/{shortUrl}", h.handleRedirectUrl)
+	mux.HandleFunc("GET /{shortUrl}", h.handleRedirectUrl)
 
 	return mux
 }

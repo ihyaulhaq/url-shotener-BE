@@ -7,25 +7,23 @@ package database
 
 import (
 	"context"
-	"database/sql"
 
 	"github.com/google/uuid"
 )
 
 const createURL = `-- name: CreateURL :one
-INSERT INTO urls (url_code, original_url, click_count)
-VALUES ($1, $2, $3)
+INSERT INTO urls (url_code, original_url)
+VALUES ($1, $2)
 RETURNING id, url_code, original_url, click_count, created_at, updated_at
 `
 
 type CreateURLParams struct {
-	UrlCode     string        `json:"url_code"`
-	OriginalUrl string        `json:"original_url"`
-	ClickCount  sql.NullInt32 `json:"click_count"`
+	UrlCode     string `json:"url_code"`
+	OriginalUrl string `json:"original_url"`
 }
 
 func (q *Queries) CreateURL(ctx context.Context, arg CreateURLParams) (Url, error) {
-	row := q.db.QueryRowContext(ctx, createURL, arg.UrlCode, arg.OriginalUrl, arg.ClickCount)
+	row := q.db.QueryRowContext(ctx, createURL, arg.UrlCode, arg.OriginalUrl)
 	var i Url
 	err := row.Scan(
 		&i.ID,
@@ -153,10 +151,10 @@ RETURNING id, url_code, original_url, click_count, created_at, updated_at
 `
 
 type UpdateURLParams struct {
-	ID          uuid.UUID     `json:"id"`
-	UrlCode     string        `json:"url_code"`
-	OriginalUrl string        `json:"original_url"`
-	ClickCount  sql.NullInt32 `json:"click_count"`
+	ID          uuid.UUID `json:"id"`
+	UrlCode     string    `json:"url_code"`
+	OriginalUrl string    `json:"original_url"`
+	ClickCount  int32     `json:"click_count"`
 }
 
 func (q *Queries) UpdateURL(ctx context.Context, arg UpdateURLParams) (Url, error) {

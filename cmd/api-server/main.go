@@ -17,6 +17,8 @@ import (
 	"github.com/ihyaulhaq/url-shotener-BE/internal/middleware"
 	"github.com/ihyaulhaq/url-shotener-BE/internal/service"
 	"github.com/ihyaulhaq/url-shotener-BE/internal/store"
+
+	_ "github.com/lib/pq"
 )
 
 func main() {
@@ -25,12 +27,14 @@ func main() {
 	cfg, err := config.Load()
 	if err != nil {
 		slog.Error("Failed to load config", "error", err)
+		os.Exit(1)
 	}
 
 	//open DB
 	db, err := openDB(cfg.DB)
 	if err != nil {
 		slog.Error("Failed to connect to db", "error", err)
+		os.Exit(1)
 	}
 	defer db.Close()
 	slog.Info("Db connected:", "host", cfg.DB.Host, "name", cfg.DB.Name)
@@ -75,7 +79,7 @@ func main() {
 }
 
 func openDB(cfg config.DBConfig) (*sql.DB, error) {
-	db, err := sql.Open("psql", cfg.DSN())
+	db, err := sql.Open("postgres", cfg.DSN())
 	if err != nil {
 		return nil, fmt.Errorf("open db :%w", err)
 	}
