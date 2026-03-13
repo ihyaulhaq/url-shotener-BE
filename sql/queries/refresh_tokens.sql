@@ -22,7 +22,7 @@ ORDER BY created_at DESC;
 -- name: RevokeRefreshToken :one
 UPDATE refresh_tokens
 SET revoked_at = NOW(), updated_at = NOW()
-WHERE id = $1
+WHERE id = $1 AND revoked_at IS NULL
 RETURNING id, token, user_id, expires_at, revoked_at, created_at, updated_at;
 
 -- name: DeleteExpiredRefreshTokens :exec

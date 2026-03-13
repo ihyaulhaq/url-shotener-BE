@@ -41,7 +41,13 @@ func main() {
 
 	s := store.NewStore(db)
 	urlSrv := service.NewUrlService(s)
-	h := handler.New(urlSrv, cfg.App.BaseURL)
+	userSrv := service.NewUserService(s, cfg.Auth)
+
+	h := handler.New(
+		urlSrv,
+		userSrv,
+		cfg.App.BaseURL,
+	)
 
 	chain := middleware.Chaining(
 		middleware.ErrorHanlder,

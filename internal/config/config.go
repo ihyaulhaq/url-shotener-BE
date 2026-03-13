@@ -13,6 +13,7 @@ type Config struct {
 	App    AppConfig
 	Server ServerConfig
 	DB     DBConfig
+	Auth   AuthConfig
 }
 
 type AppConfig struct {
@@ -37,6 +38,12 @@ type DBConfig struct {
 	MaxOpenConns    int
 	MaxIdleConns    int
 	ConnMaxLifetime time.Duration
+}
+
+type AuthConfig struct {
+	JWTSecret       string
+	AccessTokenTTL  time.Duration
+	RefreshTokenTTL time.Duration
 }
 
 func (db *DBConfig) DSN() string {
@@ -72,6 +79,12 @@ func Load() (*Config, error) {
 			MaxOpenConns:    getInt("DB_MAX_OPEN_CONNS", 25),
 			MaxIdleConns:    getInt("DB_MAX_IDLE_CONNS", 5),
 			ConnMaxLifetime: getDuration("DB_CONN_MAX_LIFETIME", 5*time.Minute),
+		},
+
+		Auth: AuthConfig{
+			JWTSecret:       getStr("JWT_SECRET", ""),
+			AccessTokenTTL:  getDuration("JWT_EXPIRE", time.Hour),
+			RefreshTokenTTL: getDuration("REFRESH_EXPIRE", 24*time.Hour*60),
 		},
 	}
 

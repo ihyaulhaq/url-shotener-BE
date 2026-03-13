@@ -8,14 +8,16 @@ import (
 )
 
 type Handler struct {
-	urlService *service.UrlService
-	baseURL    string
+	userService *service.UserService
+	urlService  *service.UrlService
+	baseURL     string
 }
 
-func New(urlService *service.UrlService, baseURL string) *Handler {
+func New(urlService *service.UrlService, userService *service.UserService, baseURL string) *Handler {
 	return &Handler{
-		urlService: urlService,
-		baseURL:    baseURL,
+		urlService:  urlService,
+		userService: userService,
+		baseURL:     baseURL,
 	}
 }
 
