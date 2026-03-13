@@ -43,7 +43,12 @@ func main() {
 	urlSrv := service.NewUrlService(s)
 	h := handler.New(urlSrv, cfg.App.BaseURL)
 
-	chain := middleware.Chaining()
+	chain := middleware.Chaining(
+		middleware.ErrorHanlder,
+		middleware.Logger,
+		middleware.CORS,
+	)
+
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%s", cfg.Server.Port),
 		Handler:      chain(h.Routes()),
