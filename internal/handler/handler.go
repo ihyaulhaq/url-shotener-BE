@@ -13,7 +13,11 @@ type Handler struct {
 	baseURL     string
 }
 
-func New(urlService *service.UrlService, userService *service.UserService, baseURL string) *Handler {
+func New(
+	urlService *service.UrlService,
+	userService *service.UserService,
+	baseURL string,
+) *Handler {
 	return &Handler{
 		urlService:  urlService,
 		userService: userService,
@@ -28,6 +32,8 @@ func (h *Handler) Routes() http.Handler {
 
 	mux.HandleFunc("POST /api/urls/shorten", h.handleShorteningUrl)
 	mux.HandleFunc("GET /{shortUrl}", h.handleRedirectUrl)
+
+	mux.HandleFunc("POST /login", h.hanldleUserLogin)
 
 	return mux
 }
