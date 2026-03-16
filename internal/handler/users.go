@@ -52,3 +52,40 @@ func (h *Handler) hanldleUserLogin(w http.ResponseWriter, r *http.Request) {
 	})
 
 }
+
+func (h *Handler) hanldleUserSignUp(w http.ResponseWriter, r *http.Request) {
+	type parameters struct {
+		Username string `json:"username"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
+	type response struct {
+	}
+
+	params := parameters{}
+	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
+		utils.ResponseWithError(w, http.StatusBadRequest, "invalid request payload")
+		return
+	}
+	if params.Email == "" || params.Password == "" {
+		utils.ResponseWithError(w, http.StatusBadRequest, "email and password required")
+		return
+	}
+
+	result, err := h.userService.Register(r.Context(), params.Username, params.Email, params.Password)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrEmailTaken):
+			utils.ResponseWithError(w, http.StatusConflict, "email already taken")
+		default:
+			utils.ResponseWithError(w, http.StatusInternalServerError, "something went wrong")
+		}
+		return
+	}
+
+	utils.ResponseWithJSON(w, http.StatusCreated, UserLoginResponse{
+		Token:        result.AccessToken,
+		RefreshToken: result.RefreshToken,
+	})
+}

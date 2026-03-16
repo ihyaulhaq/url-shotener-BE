@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"time"
@@ -23,6 +24,8 @@ type UserService struct {
 var (
 	ErrNotFound           = errors.New("record not found")
 	ErrInvalidCredentials = errors.New("invalid credentials")
+	ErrEmailTaken         = errors.New("email already exist")
+	ErrUsernameTaken      = errors.New("username already taken")
 )
 
 func NewUserService(s *store.Store, cfg config.AuthConfig) *UserService {
@@ -52,20 +55,24 @@ func (s *UserService) GetUser(ctx context.Context, id uuid.UUID) (database.User,
 func (s *UserService) CreateUser(ctx context.Context, username, email, password string) (database.User, error) {
 	hashedPassword, err := auth.HashPassword(password)
 	if err != nil {
-		return database.User{}, fmt.Errorf("Can't hash password:%v", err)
+		return database.User{}, fmt.Errorf("Can't hash password:%w", err)
 	}
 
 	existing, err := s.store.GetUserByEmail(ctx, email)
-	if err == nil && existing.ID != uuid.Nil {
-		return database.User{}, errors.New("email already taken")
+	if err != nil && existing.ID != uuid.Nil {
+		return database.User{}, fmt.Errorf("failed to check email: %w", err)
 	}
 	if existing.ID != uuid.Nil {
-		return database.User{}, errors.New("email already taken")
+		return database.User{}, ErrEmailTaken
 	}
-	existing, _ = s.store.GetUserByUsername(ctx, username)
+
+	existing, err = s.store.GetUserByUsername(ctx, username)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return database.User{}, fmt.Errorf("failed to check username: %w", err)
+	}
 	if existing.ID != uuid.Nil {
 
-		return database.User{}, errors.New("username already taken")
+		return database.User{}, ErrUsernameTaken
 	}
 
 	u, err := s.store.CreateUser(ctx, database.CreateUserParams{
@@ -74,7 +81,7 @@ func (s *UserService) CreateUser(ctx context.Context, username, email, password 
 		HashedPassword: hashedPassword,
 	})
 	if err != nil {
-		return database.User{}, fmt.Errorf("Can't create user:%v", err)
+		return database.User{}, fmt.Errorf("Can't create user:%w", err)
 	}
 
 	return u, nil
@@ -83,9 +90,32 @@ func (s *UserService) CreateUser(ctx context.Context, username, email, password 
 func (s *UserService) DeleteUser(ctx context.Context, id uuid.UUID) error {
 	err := s.store.DeleteUser(ctx, id)
 	if err != nil {
-		return fmt.Errorf("Can't delete user:%v", err)
+		return fmt.Errorf("Can't delete user:%w", err)
 	}
 	return nil
+}
+
+func (s *UserService) generateTokens(ctx context.Context, user database.User) (LoginResult, error) {
+	accessToken, err := auth.MakeJWT(user.ID, s.jwtSecret, time.Hour)
+	if err != nil {
+		return LoginResult{}, fmt.Errorf("cant create token: %w", err)
+	}
+
+	refreshKey, err := auth.MakeRefreshToken()
+	if err != nil {
+		return LoginResult{}, fmt.Errorf("cant create refresh key: %w", err)
+	}
+
+	expiresAt := time.Now().UTC().Add(24 * time.Hour * 60)
+	refreshToken, err := s.store.CreateRefreshTokenForUser(ctx, user.ID, refreshKey, expiresAt)
+	if err != nil {
+		return LoginResult{}, fmt.Errorf("cant save refresh token: %w", err)
+	}
+
+	return LoginResult{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken.Token,
+	}, nil
 }
 
 func (s *UserService) Login(ctx context.Context, email, password string) (LoginResult, error) {
@@ -96,30 +126,19 @@ func (s *UserService) Login(ctx context.Context, email, password string) (LoginR
 
 	match, err := auth.CheckPasswordHash(password, user.HashedPassword)
 	if err != nil {
-		return LoginResult{}, fmt.Errorf("cant check password hash: %v", err)
+		return LoginResult{}, fmt.Errorf("cant check password hash: %w", err)
 	}
 	if !match {
 		return LoginResult{}, ErrInvalidCredentials
 	}
+	return s.generateTokens(ctx, user)
+}
 
-	accessToken, err := auth.MakeJWT(user.ID, s.jwtSecret, s.accessTTL)
+func (s *UserService) Register(ctx context.Context, username, email, password string) (LoginResult, error) {
+	user, err := s.CreateUser(ctx, username, email, password)
 	if err != nil {
-		return LoginResult{}, fmt.Errorf("cant create token: %v", err)
+		return LoginResult{}, err
 	}
 
-	refreshKey, err := auth.MakeRefreshToken()
-	if err != nil {
-		return LoginResult{}, fmt.Errorf("cant create refresh key: %v", err)
-	}
-
-	expiresAt := time.Now().UTC().Add(s.refreshTTL)
-	refreshToken, err := s.store.CreateRefreshTokenForUser(ctx, user.ID, refreshKey, expiresAt)
-	if err != nil {
-		return LoginResult{}, fmt.Errorf("cant save refresh token: %v", err)
-	}
-
-	return LoginResult{
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken.Token,
-	}, nil
+	return s.generateTokens(ctx, user)
 }
