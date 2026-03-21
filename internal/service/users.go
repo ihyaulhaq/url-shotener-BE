@@ -37,7 +37,7 @@ func NewUserService(s *store.Store, cfg config.AuthConfig) *UserService {
 	}
 }
 
-type LoginResult struct {
+type LoginReturn struct {
 	AccessToken  string
 	RefreshToken string
 }
@@ -95,49 +95,49 @@ func (s *UserService) DeleteUser(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-func (s *UserService) generateTokens(ctx context.Context, user database.User) (LoginResult, error) {
+func (s *UserService) generateTokens(ctx context.Context, user database.User) (LoginReturn, error) {
 	accessToken, err := auth.MakeJWT(user.ID, s.jwtSecret, time.Hour)
 	if err != nil {
-		return LoginResult{}, fmt.Errorf("cant create token: %w", err)
+		return LoginReturn{}, fmt.Errorf("cant create token: %w", err)
 	}
 
 	refreshKey, err := auth.MakeRefreshToken()
 	if err != nil {
-		return LoginResult{}, fmt.Errorf("cant create refresh key: %w", err)
+		return LoginReturn{}, fmt.Errorf("cant create refresh key: %w", err)
 	}
 
 	expiresAt := time.Now().UTC().Add(24 * time.Hour * 60)
 	refreshToken, err := s.store.CreateRefreshTokenForUser(ctx, user.ID, refreshKey, expiresAt)
 	if err != nil {
-		return LoginResult{}, fmt.Errorf("cant save refresh token: %w", err)
+		return LoginReturn{}, fmt.Errorf("cant save refresh token: %w", err)
 	}
 
-	return LoginResult{
+	return LoginReturn{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken.Token,
 	}, nil
 }
 
-func (s *UserService) Login(ctx context.Context, email, password string) (LoginResult, error) {
+func (s *UserService) Login(ctx context.Context, email, password string) (LoginReturn, error) {
 	user, err := s.store.GetUserByEmail(ctx, email)
 	if err != nil {
-		return LoginResult{}, ErrNotFound
+		return LoginReturn{}, ErrNotFound
 	}
 
 	match, err := auth.CheckPasswordHash(password, user.HashedPassword)
 	if err != nil {
-		return LoginResult{}, fmt.Errorf("cant check password hash: %w", err)
+		return LoginReturn{}, fmt.Errorf("cant check password hash: %w", err)
 	}
 	if !match {
-		return LoginResult{}, ErrInvalidCredentials
+		return LoginReturn{}, ErrInvalidCredentials
 	}
 	return s.generateTokens(ctx, user)
 }
 
-func (s *UserService) Register(ctx context.Context, username, email, password string) (LoginResult, error) {
+func (s *UserService) Register(ctx context.Context, username, email, password string) (LoginReturn, error) {
 	user, err := s.CreateUser(ctx, username, email, password)
 	if err != nil {
-		return LoginResult{}, err
+		return LoginReturn{}, err
 	}
 
 	return s.generateTokens(ctx, user)

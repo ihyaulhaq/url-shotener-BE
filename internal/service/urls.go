@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/ihyaulhaq/url-shotener-BE/internal/database"
 	"github.com/ihyaulhaq/url-shotener-BE/internal/store"
 )
@@ -15,51 +17,81 @@ type UrlService struct {
 	store *store.Store
 }
 
+type ShortUrl struct {
+	ID          uuid.UUID
+	UrlCode     string
+	OriginalUrl string
+	ClickCount  int32
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
 // constructor
 func NewUrlService(s *store.Store) *UrlService {
 	return &UrlService{store: s}
 }
 
-func (s *UrlService) CreateShortUrl(ctx context.Context, originalUrl string) (database.Url, error) {
+func (s *UrlService) CreateShortUrl(ctx context.Context, originalUrl string) (ShortUrl, error) {
 
 	// validate url
 	parsed, err := url.ParseRequestURI(originalUrl)
 	if err != nil {
-		return database.Url{}, fmt.Errorf("invaild url:%w", err)
+		return ShortUrl{}, fmt.Errorf("invaild url:%w", err)
 	}
 	if parsed.Scheme != "http" && parsed.Scheme != "https" {
-		return database.Url{}, fmt.Errorf("url must use http or https")
+		return ShortUrl{}, fmt.Errorf("url must use http or https")
 	}
 
 	// make the hash
 	urlCode, err := s.generateUniqueCode(ctx, originalUrl)
 	if err != nil {
-		return database.Url{}, err
+		return ShortUrl{}, err
 	}
 
-	return s.store.CreateURL(ctx, database.CreateURLParams{
+	dbUrl, err := s.store.CreateURL(ctx, database.CreateURLParams{
 		UrlCode:     urlCode,
 		OriginalUrl: originalUrl,
 	})
+	if err != nil {
+		return ShortUrl{}, err
+	}
+
+	return ShortUrl{
+		ID:          dbUrl.ID,
+		UrlCode:     dbUrl.UrlCode,
+		OriginalUrl: dbUrl.OriginalUrl,
+		ClickCount:  dbUrl.ClickCount,
+		CreatedAt:   dbUrl.CreatedAt,
+		UpdatedAt:   dbUrl.UpdatedAt,
+	}, nil
+
 }
 
-func (s *UrlService) GetOriginalUrl(ctx context.Context, urlCode string) (database.Url, error) {
+func (s *UrlService) GetOriginalUrl(ctx context.Context, urlCode string) (ShortUrl, error) {
 	if urlCode == "" {
-		return database.Url{}, fmt.Errorf("url code is required")
+		return ShortUrl{}, fmt.Errorf("url code is required")
 	}
 
 	result, err := s.store.GetURLByURLCode(ctx, urlCode)
 	if err != nil {
-		return database.Url{}, fmt.Errorf("short url not found")
+		return ShortUrl{}, fmt.Errorf("short url not found")
 	}
-
 	updated, err := s.store.IncrementURLCount(context.Background(), result.ID)
 	if err != nil {
 		slog.Error("failed to increment click count", "urlCode", urlCode, "error", err)
-		return result, nil
+		return ShortUrl{}, nil
 	}
 
-	return updated, nil
+	url := ShortUrl{
+		ID:          updated.ID,
+		UrlCode:     updated.UrlCode,
+		OriginalUrl: updated.OriginalUrl,
+		ClickCount:  updated.ClickCount,
+		CreatedAt:   updated.CreatedAt,
+		UpdatedAt:   updated.UpdatedAt,
+	}
+
+	return url, nil
 }
 
 func (s *UrlService) generateUniqueCode(ctx context.Context, input string) (string, error) {

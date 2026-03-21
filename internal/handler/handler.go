@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/ihyaulhaq/url-shotener-BE/internal/service"
@@ -8,9 +9,19 @@ import (
 )
 
 type Handler struct {
-	userService *service.UserService
-	urlService  *service.UrlService
+	userService UserServicer
+	urlService  UrlService
 	baseURL     string
+}
+
+type UserServicer interface {
+	Login(ctx context.Context, email, password string) (service.LoginReturn, error)
+	Register(ctx context.Context, username, email, password string) (service.LoginReturn, error)
+}
+
+type UrlService interface {
+	CreateShortUrl(ctx context.Context, originalUrl string) (service.ShortUrl, error)
+	GetOriginalUrl(ctx context.Context, urlCode string) (service.ShortUrl, error)
 }
 
 func New(
@@ -34,6 +45,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /{shortUrl}", h.handleRedirectUrl)
 
 	mux.HandleFunc("POST /login", h.hanldleUserLogin)
+	mux.HandleFunc("POST /signup", h.hanldleUserSignUp)
 
 	return mux
 }
