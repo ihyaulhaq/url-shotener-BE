@@ -2,9 +2,13 @@ package middleware
 
 import (
 	"log/slog"
+	"net"
 	"net/http"
 	"runtime/debug"
+	"sync"
 	"time"
+
+	"golang.org/x/time/rate"
 )
 
 type Middleware func(http.Handler) http.Handler
@@ -23,6 +27,16 @@ type responseWriter struct {
 	status int
 	wrote  bool
 }
+
+type ipLimiter struct {
+	lastSeen time.Time
+	limiter  *rate.Limiter
+}
+
+var (
+	mu       sync.Mutex
+	limiters = make(map[string]*ipLimiter)
+)
 
 func wrapResponseWriter(w http.ResponseWriter) *responseWriter {
 	return &responseWriter{ResponseWriter: w, status: http.StatusOK}
@@ -84,4 +98,54 @@ func ErrorHanlder(next http.Handler) http.Handler {
 		}()
 		next.ServeHTTP(w, r)
 	})
+}
+
+func getLimiter(ip string) *rate.Limiter {
+	mu.Lock()
+	defer mu.Unlock()
+	if l, ok := limiters[ip]; ok {
+		return l.limiter
+	}
+	// 10 requests/second, burst of 20
+	l := rate.NewLimiter(10, 20)
+	limiters[ip] = &ipLimiter{limiter: l}
+	return l
+}
+
+func RateLimiter(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ip, _, err := net.SplitHostPort(r.RemoteAddr)
+		if err != nil {
+			ip = r.RemoteAddr
+		}
+		if !getLimiter(ip).Allow() {
+			slog.Error(
+				"to many request:",
+				"ip", ip,
+				"stack", string(debug.Stack()),
+			)
+			http.Error(w, `{"error":"too many requests"}`, http.StatusTooManyRequests)
+			return
+		}
+		next.ServeHTTP(w, r)
+
+	})
+
+}
+
+func StartCleanup() {
+	go cleanupLimiters()
+}
+
+func cleanupLimiters() {
+	for {
+		time.Sleep(5 * time.Minute)
+		mu.Lock()
+		for ip, l := range limiters {
+			if time.Since(l.lastSeen) > 10*time.Minute {
+				delete(limiters, ip)
+			}
+		}
+		mu.Unlock()
+	}
 }

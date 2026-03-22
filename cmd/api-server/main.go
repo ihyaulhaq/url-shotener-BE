@@ -39,6 +39,9 @@ func main() {
 	defer db.Close()
 	slog.Info("Db connected:", "host", cfg.DB.Host, "name", cfg.DB.Name)
 
+	// run limiter cleanup
+	middleware.StartCleanup()
+
 	s := store.NewStore(db)
 	urlSrv := service.NewUrlService(s)
 	userSrv := service.NewUserService(s, cfg.Auth)
@@ -53,6 +56,7 @@ func main() {
 		middleware.ErrorHanlder,
 		middleware.Logger,
 		middleware.CORS,
+		middleware.RateLimiter,
 	)
 
 	server := &http.Server{
