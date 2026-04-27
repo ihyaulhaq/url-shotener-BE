@@ -7,8 +7,21 @@ import (
 
 	"github.com/go-playground/validator"
 	"github.com/ihyaulhaq/url-shotener-BE/pkg/utils"
+
+	_ "github.com/ihyaulhaq/url-shotener-BE/pkg/utils"
 )
 
+// handleShorteningUrl godoc
+// @Summary      Shorten a URL
+// @Description  Accepts a long URL and returns a shortened version
+// @Tags         urls
+// @Accept       json
+// @Produce      json
+// @Param        body body CreateURLRequest true "URL to shorten"
+// @Success      201 {object} CreateURLResponse
+// @Failure      400 {object} map[string]string "invalid request payload / validation error"
+// @Failure      500 {object} map[string]string "internal server error"
+// @Router       /api/urls/shorten [post]
 func (h *Handler) handleShorteningUrl(w http.ResponseWriter, r *http.Request) {
 
 	type parameters struct {
@@ -47,6 +60,13 @@ func (h *Handler) handleShorteningUrl(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// handleRedirectUrl godoc
+// @Summary      Redirect to original URL
+// @Description  Looks up the short code and redirects the client to the original URL
+// @Tags         urls
+// @Failure      400 {object} map[string]string "url code is required"
+// @Failure      404 {object} map[string]string "short url not found"
+// @Router       /{shortUrl} [get]
 func (h *Handler) handleRedirectUrl(w http.ResponseWriter, r *http.Request) {
 	urlCode := r.PathValue("shortUrl")
 	if urlCode == "" {

@@ -6,6 +6,7 @@ import (
 
 	"github.com/ihyaulhaq/url-shotener-BE/internal/service"
 	"github.com/ihyaulhaq/url-shotener-BE/pkg/utils"
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 type Handler struct {
@@ -40,6 +41,7 @@ func (h *Handler) Routes() http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /health", h.heatlh)
+	mux.Handle("GET /swagger/", httpSwagger.WrapHandler)
 
 	mux.HandleFunc("POST /api/urls/shorten", h.handleShorteningUrl)
 	mux.HandleFunc("GET /{shortUrl}", h.handleRedirectUrl)
@@ -52,5 +54,4 @@ func (h *Handler) Routes() http.Handler {
 
 func (h *Handler) heatlh(w http.ResponseWriter, r *http.Request) {
 	utils.ResponseWithJSON(w, http.StatusOK, map[string]string{"status": "ok"})
-
 }

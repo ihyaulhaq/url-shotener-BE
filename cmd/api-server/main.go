@@ -18,9 +18,18 @@ import (
 	"github.com/ihyaulhaq/url-shotener-BE/internal/service"
 	"github.com/ihyaulhaq/url-shotener-BE/internal/store"
 
+	_ "github.com/ihyaulhaq/url-shotener-BE/cmd/api-server/docs"
 	_ "github.com/lib/pq"
 )
 
+// @title           URL Shortener API
+// @version         1.0
+// @description     API for shortening URLs
+// @host            localhost:8080
+// @BasePath        /
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
 func main() {
 
 	// Load all config server, db, app

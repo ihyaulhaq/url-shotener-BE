@@ -7,23 +7,25 @@ import (
 
 	"github.com/ihyaulhaq/url-shotener-BE/internal/service"
 	"github.com/ihyaulhaq/url-shotener-BE/pkg/utils"
+
+	_ "github.com/ihyaulhaq/url-shotener-BE/pkg/utils"
 )
 
-type UserLoginResponse struct {
-	Token        string `json:"token"`
-	RefreshToken string `json:"refresh_token"`
-}
-
+// hanldleUserLogin godoc
+// @Summary      Login user
+// @Description  Authenticates a user and returns an access token and refresh token
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        body body userLoginRequest true "User credentials"
+// @Success      200 {object} userLoginResponse
+// @Failure      400 {object} utils.Envelope "invalid request payload"
+// @Failure      401 {object} utils.Envelope "invalid credentials"
+// @Failure      404 {object} utils.Envelope "user not found"
+// @Failure      500 {object} utils.Envelope "something went wrong"
+// @Router       /login [post]
 func (h *Handler) hanldleUserLogin(w http.ResponseWriter, r *http.Request) {
-	type parameters struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}
-
-	type response struct {
-	}
-
-	params := parameters{}
+	params := userLoginRequest{}
 	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
 		utils.ResponseWithError(w, http.StatusBadRequest, "invalid request payload")
 		return
@@ -46,24 +48,30 @@ func (h *Handler) hanldleUserLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.ResponseWithJSON(w, http.StatusOK, UserLoginResponse{
+	utils.ResponseWithJSON(w, http.StatusOK, userLoginResponse{
 		Token:        result.AccessToken,
 		RefreshToken: result.RefreshToken,
 	})
 
 }
 
+// hanldleUserSignUp godoc
+// @Summary      Register a new user
+// @Description  Creates a new user account with email and password
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        body body createUserRequest true "User registration details"
+// @Success      201 {object} userLoginResponse
+// @Failure      400 {object} map[string]string "email and password required / invalid request payload"
+// @Failure      409 {object} map[string]string "email already taken"
+// @Failure      500 {object} map[string]string "something went wrong"
+// @Router       /signup [post]
 func (h *Handler) hanldleUserSignUp(w http.ResponseWriter, r *http.Request) {
-	type parameters struct {
-		Username string `json:"username"`
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}
-
 	type response struct {
 	}
 
-	params := parameters{}
+	params := createUserRequest{}
 	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
 		utils.ResponseWithError(w, http.StatusBadRequest, "invalid request payload")
 		return
@@ -84,7 +92,7 @@ func (h *Handler) hanldleUserSignUp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.ResponseWithJSON(w, http.StatusCreated, UserLoginResponse{
+	utils.ResponseWithJSON(w, http.StatusCreated, userLoginResponse{
 		Token:        result.AccessToken,
 		RefreshToken: result.RefreshToken,
 	})
