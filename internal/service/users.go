@@ -59,10 +59,10 @@ func (s *UserService) CreateUser(ctx context.Context, username, email, password 
 	}
 
 	existing, err := s.store.GetUserByEmail(ctx, email)
-	if err != nil && existing.ID != uuid.Nil {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return database.User{}, fmt.Errorf("failed to check email: %w", err)
 	}
-	if existing.ID != uuid.Nil {
+	if err == nil {
 		return database.User{}, ErrEmailTaken
 	}
 
@@ -141,4 +141,18 @@ func (s *UserService) Register(ctx context.Context, username, email, password st
 	}
 
 	return s.generateTokens(ctx, user)
+}
+
+func (s *UserService) Logout(ctx context.Context, refreshToken string) error {
+	token, err := s.store.GetRefreshTokenByToken(ctx, refreshToken)
+	if err != nil {
+		return fmt.Errorf("invalid refresh token: %w", err)
+	}
+
+	_, err = s.store.RevokeRefreshToken(ctx, token.ID)
+	if err != nil {
+		return fmt.Errorf("could not revoke token: %w", err)
+	}
+
+	return nil
 }

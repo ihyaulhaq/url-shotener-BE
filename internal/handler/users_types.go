@@ -15,3 +15,7 @@ type createUserRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
+
+type userLogoutRequest struct {
+	RefreshToken string `json:"refresh_token"`
+}

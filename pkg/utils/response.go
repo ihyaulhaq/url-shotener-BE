@@ -4,43 +4,47 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
-	"time"
 )
 
 type Envelope struct {
-	Data      any       `json:"data,omitempty"`
-	Error     *APIError `json:"error,omitempty"`
-	Timestamp time.Time `json:"timestamp"`
+	Data  any       `json:"data,omitempty"`
+	Error *APIError `json:"error,omitempty"`
+	Meta  *Meta     `json:"meta,omitempty"`
 }
 
 type APIError struct {
-	Code    int    `json:"code"`
+	Type    string `json:"type"`
 	Message string `json:"message"`
+	Details any    `json:"details,omitempty"`
+}
+
+type Meta struct {
+	TotalItems  int `json:"total_items,omitempty"`
+	TotalPages  int `json:"total_pages,omitempty"`
+	CurrentPage int `json:"current_page,omitempty"`
 }
 
 func ResponseWithJSON(w http.ResponseWriter, status int, data any) {
 	writeJSON(w, status, Envelope{
-		Data:      data,
-		Timestamp: time.Now().UTC(),
+		Data: data,
 	})
 }
 
-func ResponseWithError(w http.ResponseWriter, status int, msg string) {
+func ResponseWithPagination(w http.ResponseWriter, status int, data any, meta Meta) {
 	writeJSON(w, status, Envelope{
-		Error: &APIError{
-			Code:    status,
-			Message: msg,
-		},
-		Timestamp: time.Now().UTC(),
+		Data: data,
+		Meta: &meta,
 	})
 }
-
 func writeJSON(w http.ResponseWriter, status int, envelope Envelope) {
 	// Marshal first
 	b, err := json.Marshal(envelope)
 	if err != nil {
 		slog.Error("failed to marshal JSON response", "error", err)
-		http.Error(w, `{"error":{"code":500,"message":"internal server error"}}`, http.StatusInternalServerError)
+		http.Error(w,
+			`{"error":{"code":500,"message":"internal server error"}}`,
+			http.StatusInternalServerError,
+		)
 		return
 	}
 

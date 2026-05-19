@@ -59,6 +59,7 @@ func main() {
 		urlSrv,
 		userSrv,
 		cfg.App.BaseURL,
+		cfg.Auth.JWTSecret,
 	)
 
 	chain := middleware.Chaining(

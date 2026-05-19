@@ -31,7 +31,7 @@ func NewUrlService(s *store.Store) *UrlService {
 	return &UrlService{store: s}
 }
 
-func (s *UrlService) CreateShortUrl(ctx context.Context, originalUrl string) (ShortUrl, error) {
+func (s *UrlService) CreateShortUrl(ctx context.Context, originalUrl string, userID *uuid.UUID) (ShortUrl, error) {
 
 	// validate url
 	parsed, err := url.ParseRequestURI(originalUrl)
@@ -54,6 +54,17 @@ func (s *UrlService) CreateShortUrl(ctx context.Context, originalUrl string) (Sh
 	})
 	if err != nil {
 		return ShortUrl{}, err
+	}
+
+	// If user is logged in, link the URL to the user
+	if userID != nil {
+		_, err := s.store.CreateURLUser(ctx, database.CreateURLUserParams{
+			UrlID:  dbUrl.ID,
+			UserID: *userID,
+		})
+		if err != nil {
+			slog.Error("failed to link url to user", "urlID", dbUrl.ID, "userID", *userID, "error", err)
+		}
 	}
 
 	return ShortUrl{
@@ -92,6 +103,27 @@ func (s *UrlService) GetOriginalUrl(ctx context.Context, urlCode string) (ShortU
 	}
 
 	return url, nil
+}
+
+func (s *UrlService) GetUserUrls(ctx context.Context, userID uuid.UUID) ([]ShortUrl, error) {
+	dbUrls, err := s.store.GetURLsByUserID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user urls: %w", err)
+	}
+
+	urls := make([]ShortUrl, len(dbUrls))
+	for i, u := range dbUrls {
+		urls[i] = ShortUrl{
+			ID:          u.ID,
+			UrlCode:     u.UrlCode,
+			OriginalUrl: u.OriginalUrl,
+			ClickCount:  u.ClickCount,
+			CreatedAt:   u.CreatedAt,
+			UpdatedAt:   u.UpdatedAt,
+		}
+	}
+
+	return urls, nil
 }
 
 func (s *UrlService) generateUniqueCode(ctx context.Context, input string) (string, error) {

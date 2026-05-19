@@ -2,14 +2,12 @@
 INSERT INTO users (
   username,
   email, 
-  hashed_password, 
-  is_active
+  hashed_password
 )
 VALUES (
   $1, 
   $2, 
-  $3, 
-  $4
+  $3
 )
 RETURNING id, username, email, hashed_password, is_active, created_at, updated_at;
 

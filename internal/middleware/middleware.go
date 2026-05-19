@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"log/slog"
 	"net"
 	"net/http"
@@ -8,19 +9,16 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/ihyaulhaq/url-shotener-BE/internal/auth"
 	"golang.org/x/time/rate"
 )
 
-type Middleware func(http.Handler) http.Handler
+type contextKey string
 
-func Chaining(middlewares ...Middleware) Middleware {
-	return func(next http.Handler) http.Handler {
-		for i := len(middlewares) - 1; i >= 0; i-- {
-			next = middlewares[i](next)
-		}
-		return next
-	}
-}
+const UserIDKey contextKey = "userID"
+
+type Middleware func(http.Handler) http.Handler
 
 type responseWriter struct {
 	http.ResponseWriter
@@ -37,6 +35,15 @@ var (
 	mu       sync.Mutex
 	limiters = make(map[string]*ipLimiter)
 )
+
+func Chaining(middlewares ...Middleware) Middleware {
+	return func(next http.Handler) http.Handler {
+		for i := len(middlewares) - 1; i >= 0; i-- {
+			next = middlewares[i](next)
+		}
+		return next
+	}
+}
 
 func wrapResponseWriter(w http.ResponseWriter) *responseWriter {
 	return &responseWriter{ResponseWriter: w, status: http.StatusOK}
@@ -103,12 +110,17 @@ func ErrorHanlder(next http.Handler) http.Handler {
 func getLimiter(ip string) *rate.Limiter {
 	mu.Lock()
 	defer mu.Unlock()
+
 	if l, ok := limiters[ip]; ok {
+		l.lastSeen = time.Now()
 		return l.limiter
 	}
 	// 10 requests/second, burst of 20
 	l := rate.NewLimiter(10, 20)
-	limiters[ip] = &ipLimiter{limiter: l}
+	limiters[ip] = &ipLimiter{
+		limiter:  l,
+		lastSeen: time.Now(),
+	}
 	return l
 }
 
@@ -147,5 +159,47 @@ func cleanupLimiters() {
 			}
 		}
 		mu.Unlock()
+	}
+}
+
+func UserIDFromContext(ctx context.Context) (uuid.UUID, bool) {
+	id, ok := ctx.Value(UserIDKey).(uuid.UUID)
+	return id, ok
+}
+
+func RequireAuth(jwtSecret string) Middleware {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			token, err := auth.GetBearerToken(r.Header)
+			if err != nil {
+				http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+				return
+			}
+
+			userID, err := auth.ValidateJWT(token, jwtSecret)
+			if err != nil {
+				http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+				return
+			}
+
+			ctx := context.WithValue(r.Context(), UserIDKey, userID)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
+
+func OptionalAuth(jwtSecret string) Middleware {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			token, err := auth.GetBearerToken(r.Header)
+			if err == nil {
+				userID, err := auth.ValidateJWT(token, jwtSecret)
+				if err == nil {
+					ctx := context.WithValue(r.Context(), UserIDKey, userID)
+					r = r.WithContext(ctx)
+				}
+			}
+			next.ServeHTTP(w, r)
+		})
 	}
 }

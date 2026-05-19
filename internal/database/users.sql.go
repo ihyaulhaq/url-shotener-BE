@@ -16,32 +16,24 @@ const createUser = `-- name: CreateUser :one
 INSERT INTO users (
   username,
   email, 
-  hashed_password, 
-  is_active
+  hashed_password
 )
 VALUES (
   $1, 
   $2, 
-  $3, 
-  $4
+  $3
 )
 RETURNING id, username, email, hashed_password, is_active, created_at, updated_at
 `
 
 type CreateUserParams struct {
-	Username       string       `json:"username"`
-	Email          string       `json:"email"`
-	HashedPassword string       `json:"hashed_password"`
-	IsActive       sql.NullBool `json:"is_active"`
+	Username       string `json:"username"`
+	Email          string `json:"email"`
+	HashedPassword string `json:"hashed_password"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
-	row := q.db.QueryRowContext(ctx, createUser,
-		arg.Username,
-		arg.Email,
-		arg.HashedPassword,
-		arg.IsActive,
-	)
+	row := q.db.QueryRowContext(ctx, createUser, arg.Username, arg.Email, arg.HashedPassword)
 	var i User
 	err := row.Scan(
 		&i.ID,
